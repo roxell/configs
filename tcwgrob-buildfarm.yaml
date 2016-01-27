@@ -1,0 +1,120 @@
+- job:
+    name: tcwg-buildfarm-master
+    project-type: matrix
+    defaults: global
+    logrotate:
+        daysToKeep: 10
+        numToKeep: 5
+    properties:
+        - authorization:
+            rob:
+                - job-configure
+                - job-delete
+                - job-workspace
+                - job-build
+                - job-cancel
+    parameters:
+        - string:
+            name: gcc_branch
+            default: 'latest'
+            description: 'GCC revision to build'
+        - string:
+            name: runtests
+            default: 'x86_64-host'
+            description: 'Run toolchain testsuites: "yes", "no", "x86_64-host"'
+        - bool:
+            name: try_bootstrap
+            default: 'false'
+            description: 'Attempt to bootstrap GCC for compatible host and target combinations'
+        - string:
+            name: excludecheck
+            default: 'gdb'
+            description: 'Do not run "make check" on this component'
+        - bool:
+            name: dont_fail
+            default: false
+            description: 'Do not fail the build'
+        - string:
+            name: log_server
+            default: moongulch.net:logs-test
+            description: 'Log_Server'
+        - string:
+            name: abe_branch
+            default: refs/heads/test
+            description: 'ABE revision to test'
+    disabled: false
+    node: local
+    workspace: /home/linaro/workspace
+    child-workspace: $target
+    concurrent: true
+    display-name: 'TCWG Rob BuildFarm Test'
+    scm:
+        - git:
+            url: https://git-us.linaro.org/toolchain/abe.git
+            refspec: +refs/changes/*:refs/remotes/changes/*
+            credentials-id: b9299554-d09d-4e49-8324-6b65b456e165
+            branches:
+                - ${abe_branch}
+            basedir: /home/linaro/workspace/abe
+            skip-tag: true
+            shallow-clone: true
+            wipe-workspace: true
+    axes:
+        - axis:
+            type: slave
+            name: label
+            values:
+                - x86_64
+#                - tcwg-aarch64-build
+        - axis:
+            type: user-defined
+            name: target
+            values:
+                - aarch64-linux-gnu
+                - aarch64-none-elf
+                - aarch64_be-none-elf
+                - arm-linux-gnueabi
+                - arm-linux-gnueabihf
+                - armeb-linux-gnueabihf
+    execution-strategy:
+        combination-filter: |
+            (label=="x86_64")
+        sequential: false
+    wrappers:
+        - timeout:
+            timeout: 600
+        - timestamps
+        - ssh-agent-credentials:
+            # co-buildslave user with rsa key id
+            users:
+                - '95d48349-72b4-4857-a082-8e7264e01602'
+        - build-name:
+            name: '#${BUILD_NUMBER}-${ENV,var="gcc_branch"}'
+    builders:
+        - shell: |
+            #!/bin/bash
+
+            set -e
+            set -x
+
+            case "$runtests-$(uname -m)" in
+              "yes"-*) runtests_opt="--runtests" ;;
+              "x86_64-host"-x86_64) runtests_opt="--runtests" ;;
+              *) runtests_opt="" ;;
+            esac
+
+            if $try_bootstrap; then
+              bootstrap="--bootstrap"
+            else
+              bootstrap=""
+            fi
+
+            result="0"
+            CONFIG_SHELL="/bin/bash -x"
+            /bin/bash -x ../abe/jenkins.sh --target ${target} --gcc-branch ${gcc_branch} --languages c,c++ $bootstrap $runtests_opt --excludecheck ${excludecheck} --logserver moongulch.net --gitrepo /home/linaro/workspace/snapshots || result=$?
+
+            echo "Result of jenkins.sh" $result"
+            if $dont_fail; then
+              result="0"
+            fi
+            exit $result
