@@ -1,3 +1,4 @@
+# http://docs.openstack.org/infra/jenkins-job-builder/definition.html
 - job:
     name: tcwg-buildfarm-master
     project-type: matrix
@@ -14,6 +15,14 @@
                 - job-build
                 - job-cancel
     parameters:
+        - choice:
+           name: node
+           choices:
+             - x86_64
+             - i686
+             - armv7
+             - armv8
+           description: "Machine to build on"
         - string:
             name: gcc_branch
             default: 'latest'
@@ -35,15 +44,11 @@
             default: false
             description: 'Do not fail the build'
         - string:
-            name: log_server
-            default: moongulch.net:logs-test
-            description: 'Log_Server'
-        - string:
             name: abe_branch
             default: refs/heads/test
             description: 'ABE revision to test'
     disabled: false
-    node: local
+    node: x86
     workspace: /home/linaro/workspace
     child-workspace: $target
     concurrent: true
@@ -64,8 +69,8 @@
             type: slave
             name: label
             values:
-                - x86_64
-#                - tcwg-aarch64-build
+                - x86
+                - armv7
         - axis:
             type: user-defined
             name: target
@@ -76,20 +81,20 @@
                 - arm-linux-gnueabi
                 - arm-linux-gnueabihf
                 - armeb-linux-gnueabihf
+                - native
+# http://docs.openstack.org/infra/jenkins-job-builder/project_matrix.html
     execution-strategy:
-        combination-filter: |
-            (label=="x86_64")
+        combination-filter: ((label=="x86" && target!="native") || (label=="x86" || label=="armv7" && target=="native"))
         sequential: false
     wrappers:
         - timeout:
             timeout: 600
-        - timestamps
         - ssh-agent-credentials:
             # co-buildslave user with rsa key id
             users:
                 - '95d48349-72b4-4857-a082-8e7264e01602'
         - build-name:
-            name: '#${BUILD_NUMBER}-${ENV,var="gcc_branch"}'
+            name: '#${BUILD_NUMBER}-${ENV,var="target"}'
     builders:
         - shell: |
             #!/bin/bash
@@ -97,23 +102,30 @@
             set -e
             set -x
 
-            case "$runtests-$(uname -m)" in
-              "yes"-*) runtests_opt="--runtests" ;;
-              "x86_64-host"-x86_64) runtests_opt="--runtests" ;;
-              *) runtests_opt="" ;;
-            esac
-
             if $try_bootstrap; then
               bootstrap="--bootstrap"
             else
               bootstrap=""
             fi
 
+            echo "Hack Alert!!! label=${label} target=${target} node=${node}"
+
+            if test x"${target}" != x"native"; then
+              targetop="--target ${target}"
+            else
+              if test "`echo ${target} | egrep -c '^arm|^aarch'`" -gt 0; then
+                echo "Don't build cross toolchain on ARM or AARCH64 platforms"
+                exit 0
+              else
+                targetop=""
+              fi
+            fi
+
             result="0"
             CONFIG_SHELL="/bin/bash -x"
-            /bin/bash -x ../abe/jenkins.sh --target ${target} --gcc-branch ${gcc_branch} --languages c,c++ $bootstrap $runtests_opt --excludecheck ${excludecheck} --logserver moongulch.net --gitrepo /home/linaro/workspace/snapshots || result=$?
+            /bin/bash -x ../abe/jenkins.sh ${targetop} --gcc-branch ${gcc_branch} --languages c,c++ $bootstrap --excludecheck ${excludecheck} --gitrepo /home/linaro/workspace/snapshots || result=$?
 
-            echo "Result of jenkins.sh" $result"
+            echo "Result of jenkins.sh: $result"
             if $dont_fail; then
               result="0"
             fi
