@@ -71,6 +71,7 @@
             values:
                 - x86
                 - armv7
+                - armv8
         - axis:
             type: user-defined
             name: target
@@ -84,7 +85,7 @@
                 - native
 # http://docs.openstack.org/infra/jenkins-job-builder/project_matrix.html
     execution-strategy:
-        combination-filter: ((label=="x86" && target!="native") || (label=="x86" || label=="armv7" && target=="native"))
+        combination-filter: ((label=="x86" && target!="native") || ((label=="x86" || label=="armv7" || label=="armv8") && target=="native"))
         sequential: false
     wrappers:
         - timeout:
@@ -95,6 +96,8 @@
                 - '95d48349-72b4-4857-a082-8e7264e01602'
         - build-name:
             name: '#${BUILD_NUMBER}-${ENV,var="target"}'
+        - matrix-tie-parent:
+            node: master
     builders:
         - shell: |
             #!/bin/bash
