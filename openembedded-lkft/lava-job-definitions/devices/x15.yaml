@@ -1,0 +1,1 @@
+{% set testdevnames = '$(echo "/dev/crapdevice")' %}

@@ -73,23 +73,30 @@ fi
 TEMPLATE_PATH=""
 TEST_FILES=""
 
+mkdir -p ${BASE_PATH}/lava-job-definitions/tmp/testplan/
+for ts in $(find ${BASE_PATH}/lava-job-definitions/testplan/ -type f -name '*.yaml'); do
+    cat ${ts} | tee ${BASE_PATH}/lava-job-definitions/tmp/testplan/${DEVICE_TYPE}_$(basename ${ts})
+    if [[ -f ${BASE_PATH}/lava-job-definitions/devices/${DEVICE_TYPE}.yaml ]];then
+    cat ${BASE_PATH}/lava-job-definitions/devices/${DEVICE_TYPE}.yaml | tee -a ${BASE_PATH}/lava-job-definitions/tmp/testplan/${DEVICE_TYPE}_$(basename ${ts})
+    fi
+done
 # Generate list of job templates for full test run
 for ts in ${TEST_SUITES,,}; do
     case ${ts} in
         all)
-            TEST_FILES=$(ls ${BASE_PATH}/lava-job-definitions/testplan/)
+            TEST_FILES=$(ls ${BASE_PATH}/lava-job-definitions/tmp/testplan/)
             ;;
         none)
             break
             ;;
         kselftests|libhugetlbfs|ltp)
-            TEST_FILES="${TEST_FILES} $(basename -a ${BASE_PATH}/lava-job-definitions/testplan/${ts}*.yaml)"
+            TEST_FILES="${TEST_FILES} $(basename -a ${BASE_PATH}/lava-job-definitions/tmp/testplan/${DEVICE_TYPE}_${ts}*.yaml)"
             ;;
         *)
-            if [ -e ${BASE_PATH}/lava-job-definitions/testplan/${ts}.yaml ]; then
+            if [ -e ${BASE_PATH}/lava-job-definitions/tmp/testplan/${DEVICE_TYPE}_${ts}.yaml ]; then
                 TEST_FILES="${TEST_FILES} ${ts}.yaml"
             else
-                echo "WARNING: Not sure what this test suite is about: ${ts}. Skipped."
+                echo "WARNING: Not sure what this test suite is about: ${DEVICE_TYPE}_${ts}. Skipped."
             fi
             ;;
     esac
@@ -105,25 +112,25 @@ for ts in ${TEST_SUITES,,}; do
 done
 
 for test in ${TEST_FILES}; do
-    if [[ ${test} = "ltp-open-posix.yaml" ]];then
+    if [[ ${test} = *ltp-open-posix.yaml ]];then
         # Run LTP open posix test suite on limited devices
         # Each one per architecture arm64 juno-r2, arm32 x15 and x86
         if [[ ${DEVICE_TYPE} = "juno-r2" || ${DEVICE_TYPE} = "x15" || ${DEVICE_TYPE} = "x86" || ${DEVICE_TYPE} = "i386" ]];then
-            FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} testplan/${test}"
+            FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} tmp/testplan/${test}"
         fi
-    elif  [[ ${test} = "kselftests-native.yaml" || ${test} = "kselftests-none.yaml" ]];then
+    elif  [[ ${test} = *kselftests-native.yaml || ${test} = *kselftests-none.yaml ]];then
         # kselftests-native.yaml and kselftests-none.yaml tests needed for x86
         # Don't run on qemu; it's not possible to pass a kernel argument
         # given the way we build the image and run qemu.
         if [[ ${DEVICE_TYPE} = "x86" ]];then
-            FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} testplan/${test}"
+            FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} tmp/testplan/${test}"
         fi
-    elif [[ ${test} = "ssuite.yaml" ]];then
-        if [[ ${DEVICE_TYPE} = "x86" ]];then
-            FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} testplan/${test}"
+    elif [[ ${test} = *ssuite.yaml ]];then
+        if [[ ${DEVICE_TYPE} = "x86" || ${DEVICE_TYPE} = "x15" ]];then
+            FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} tmp/testplan/${test}"
         fi
     else
-        FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} testplan/${test}"
+        FULL_TEST_TEMPLATES="${FULL_TEST_TEMPLATES} tmp/testplan/${test}"
     fi
 done
 
@@ -165,3 +172,5 @@ if [ ! -z "${FULL_TEST_TEMPLATES}" ]; then
     ${DRY_RUN} \
     --test-plan ${FULL_TEST_TEMPLATES}
 fi
+
+rm -rf ${BASE_PATH}/lava-job-definitions/tmp

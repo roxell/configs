@@ -1,0 +1,1 @@
+{% set testdevnames = '$(lava-target-storage SATA || lava-target-storage USB)' %}
