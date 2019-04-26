@@ -37,3 +37,20 @@
       minutes: 15
     method: u-boot
 {% endblock boot_target %}
+
+{% block test_target %}
+  {{ super() }}
+    - from: inline
+      repository:
+        metadata:
+          format: Lava-Test Test Definition 1.0
+          name: prep-tmp-disk
+          description: "Mount local disk for tmp space"
+        run:
+          steps:
+          - echo "/dev/$(lsblk -il| grep " /$"| awk '{ print $1 }')|tee /my-device-or-partition
+          - chmod 777 /my-device-or-partition
+      name: prep-tmp-disk
+      path: inline/prep.yaml
+{% endblock test_target %}
+
