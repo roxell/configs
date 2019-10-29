@@ -29,14 +29,12 @@ export DTB_IMG=Image-gz-hikey-20171012090440-346.dtb
 export ROOTFS_IMG=rpb-console-image-hikey-20171012090440-346.rootfs.img.gz
 export ROOTFS_EXT4=rpb-console-image-hikey-20171012090440-346.rootfs.ext4.gz
 export ROOTFS_TARXZ_IMG=rpb-console-image-hikey-20171012090440-346.rootfs.tar.xz
-export HDD_IMG=rpb-console-image-hikey-20171012090440-346.rootfs.hddimg
 export BOOT_URL=${BASE_URL}/${PUB_DEST}/${BOOT_IMG}
 export DTB_URL=${BASE_URL}/${PUB_DEST}/${DTB_IMG}
 export KERNEL_URL=${BASE_URL}/${PUB_DEST}/${KERNEL_IMG}
 export MODULES_URL=${BASE_URL}/${PUB_DEST}/${MODULES_TGZ}
 export EXT4_IMAGE_URL=${BASE_URL}/${PUB_DEST}/${ROOTFS_EXT4}
 export NFSROOTFS_URL=${BASE_URL}/${PUB_DEST}/${ROOTFS_TARXZ_IMG}
-export HDD_URL=${BASE_URL}/${PUB_DEST}/${HDD_IMG}
 export SYSTEM_URL=${BASE_URL}/${PUB_DEST}/${ROOTFS_IMG}
 export BUILD_URL="https://ci.linaro.org/job/openembedded-lkft-linux-mainline/DISTRO=rpb,MACHINE=hikey,label=docker-stretch-amd64/346/"
 export JOB_BASE_NAME="DISTRO=rpb,MACHINE=hikey,label=docker-stretch-amd64"
